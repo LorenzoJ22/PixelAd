@@ -1,0 +1,36 @@
+{
+    "activeFile": "",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "Leve-01.tmx": {
+            "scale": 1.3893749999999998,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 333.24336482231223,
+                "y": 184.61538461538467
+            }
+        },
+        "Level-01.tmx": {
+            "scale": 1.456171875,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 318.6437040613767,
+                "y": 184.38757444068892
+            }
+        },
+        "Pixel Adventure.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "openFiles": [
+    ],
+    "project": "PixelAdventure.tiled-project",
+    "recentFiles": [
+        "Pixel Adventure.tsx",
+        "Level-01.tmx",
+        "Leve-01.tmx"
+    ]
+}
