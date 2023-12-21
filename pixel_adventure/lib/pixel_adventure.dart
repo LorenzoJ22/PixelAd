@@ -18,7 +18,6 @@ class PixelAdventure extends FlameGame
   @override
   Color backgroundColor() => const Color(0xFF211F30);
   late CameraComponent cam;
-  late CameraComponent cam;
   Player player = Player(character: 'Mask Dude');
   late JoystickComponent joystick;
   bool showControls = true;
@@ -32,7 +31,6 @@ class PixelAdventure extends FlameGame
     // load all images into cache
     await images.loadAllImages();
 
-    _loadLevel();
     _loadLevel();
 
     if(showControls){
