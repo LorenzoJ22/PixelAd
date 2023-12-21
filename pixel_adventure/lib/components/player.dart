@@ -6,6 +6,7 @@ import 'package:flame_audio/flame_audio.dart';
 //import 'package:flutter/src/services/keyboard_key.g.dart';
 import 'package:flutter/services.dart';
 import 'package:pixel_adventure/components/checkpoint.dart';
+import 'package:pixel_adventure/components/checkpoint.dart';
 import 'package:pixel_adventure/components/collision_block.dart';
 import 'package:pixel_adventure/components/custom_hitbox.dart';
 import 'package:pixel_adventure/components/fruit.dart';
@@ -300,6 +301,6 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
 
       const waitToChangeDuration = Duration(seconds: 3);
       Future.delayed(waitToChangeDuration, () => game.loadNextLevel() );
-
   }
+
 }
