@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flame/components.dart';
 import 'package:flame_tiled/flame_tiled.dart';
 import 'package:pixel_adventure/components/background_tile.dart';
+import 'package:pixel_adventure/components/checkpoint.dart';
 import 'package:pixel_adventure/components/collision_block.dart';
 import 'package:pixel_adventure/components/fruit.dart';
 //import 'package:flutter/foundation.dart';
@@ -34,39 +35,27 @@ class Level extends World with HasGameRef<PixelAdventure>{
   
   void _scrollingBackground() {
     final backgroundLayer = level.tileMap.getLayer('Background');
-    const tileSize = 64;
-
-    final numTilesY = (game.size.y / tileSize).floor();
-    final numTilesX = (game.size.x / tileSize).floor();
-
 
     if(backgroundLayer != null){
       final backgroundColor = 
         backgroundLayer.properties.getValue('BackgroundColor');
-
-      for(double y = 0; y < numTilesY+2; y++){
-        for(double x = 0; x < numTilesX; x++){
-          final backgroundTile = BackgroundTile(
+        final backgroundTile = BackgroundTile(
             color: backgroundColor ?? 'Gray', 
-            position: Vector2(x * tileSize, y * tileSize - tileSize),
-          );
-
-          add(backgroundTile);
-        }
-       
+            position: Vector2(0, 0),
+        );
+        add(backgroundTile);
       }
-
     }
-  }
   
   void _spawningObjects() {
-     final spawnPointsLayer = level.tileMap.getLayer<ObjectGroup>('Spawnpoints');
+    final spawnPointsLayer = level.tileMap.getLayer<ObjectGroup>('Spawnpoints');
 
     if(spawnPointsLayer != null) {
       for(final spawnPoint in spawnPointsLayer!.objects) {
        switch (spawnPoint.class_) {
         case 'Player':
           player.position = Vector2(spawnPoint.x, spawnPoint.y);
+          player.scale.x = 1;
           add(player);
           break;
         case 'Fruit': 
@@ -90,6 +79,13 @@ class Level extends World with HasGameRef<PixelAdventure>{
         );
         add(saw);
         break;
+      case 'Checkpoint':
+        final checkpoint = Checkpoint(
+          position: Vector2(spawnPoint.x, spawnPoint.y),
+          size: Vector2(spawnPoint.width, spawnPoint.height),
+        );
+        add(checkpoint);
+      break;
         default:
       }
     } 

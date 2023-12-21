@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flame_audio/flame_audio.dart';
 //import 'package:flutter/src/services/keyboard_key.g.dart';
 import 'package:flutter/services.dart';
+import 'package:pixel_adventure/components/checkpoint.dart';
 import 'package:pixel_adventure/components/collision_block.dart';
 import 'package:pixel_adventure/components/custom_hitbox.dart';
 import 'package:pixel_adventure/components/fruit.dart';
@@ -12,7 +14,7 @@ import 'package:pixel_adventure/pixel_adventure.dart';
 
 import 'saw.dart';
 
-enum PlayerState {idle, running, jumping, falling, hit, appearing }
+enum PlayerState {idle, running, jumping, falling, hit, appearing, disappearing }
 
 
 class Player extends SpriteAnimationGroupComponent 
@@ -30,6 +32,7 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
   late final SpriteAnimation fallingAnimation;
   late final SpriteAnimation hitAnimation;
   late final SpriteAnimation appearingAnimation;
+  late final SpriteAnimation disappearingAnimation;
 
   final double _gravity = 21.8;
   final double _jumpForce = 410;
@@ -41,6 +44,7 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
   bool isOnGround = false;
   bool hasJumped = false;
   bool gotHit = false;
+  bool reachedCheckpoint = false;
   List<CollisionBlock> collisionBlocks = [];
   CustomHitBox hitbox = CustomHitBox(
     offsetX: 10,
@@ -48,6 +52,9 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
     width: 14,
     height: 28
   );
+
+  double fixedDeltaTime = 1 / 60;
+  double accumulatedTime = 0;
 
 @override
   FutureOr<void> onLoad() {
@@ -65,13 +72,19 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
 
   @override
   void update(double dt) {
-    if(!gotHit){
-      _updatePlayerState();
-    _updatePlayerMovement(dt);
-    _checkHorizontalCollisions();
-    _applyGravity(dt);
-    _checkVerticalCollisions();
+    accumulatedTime += dt;
+
+    while(accumulatedTime >= fixedDeltaTime) {
+      if(!gotHit && !reachedCheckpoint){
+        _updatePlayerState();
+        _updatePlayerMovement(fixedDeltaTime);
+        _checkHorizontalCollisions();
+        _applyGravity(fixedDeltaTime);
+        _checkVerticalCollisions();
+      }
+      accumulatedTime -= fixedDeltaTime;
     }
+    
     super.update(dt);
   }
 
@@ -92,22 +105,26 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
 
     return super.onKeyEvent(event, keysPressed);
   }
-
-  @override
-  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
-    if(other is Fruit) other.collidedWithPlayer();
-    if(other is Saw) _respawn();
-    
-    super.onCollision(intersectionPoints, other);
-  }
   
+  @override
+  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+    if(!reachedCheckpoint) {
+      if(other is Fruit) other.collidedWithPlayer();
+      if(other is Saw) _respawn();
+      if(other is Checkpoint && !reachedCheckpoint) _reachedCheckpoint();
+    }
+    super.onCollisionStart(intersectionPoints, other);
+  }
+
   void _loadAllAnimations() {
     idleAnimation = _spriteAnimation('Idle', 11);
     runningAnimation = _spriteAnimation('Run', 12);
     jumpingAnimation = _spriteAnimation('Jump', 1);
     fallingAnimation = _spriteAnimation('Fall', 1);
-    hitAnimation = _spriteAnimation('Hit', 7);
+    hitAnimation = _spriteAnimation('Hit', 7)..loop = false;
     appearingAnimation = _specialSpriteAnimation('Appearing', 7);
+    disappearingAnimation = _specialSpriteAnimation('Desappearing', 7);
+    
 
 
     // List of all animations
@@ -118,6 +135,7 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
       PlayerState.falling: fallingAnimation,
       PlayerState.hit: hitAnimation,
       PlayerState.appearing: appearingAnimation,
+      PlayerState.disappearing: disappearingAnimation,
       
     };
 
@@ -143,6 +161,7 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
       amount: amount,
       stepTime: stepTime,
       textureSize: Vector2.all(96),
+      loop: false,
       ),
     );
   }
@@ -178,6 +197,7 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
   }
 
   void _playerJump(double dt) {
+    if(game.playSounds) FlameAudio.play('jump.wav', volume: game.soundVolume);
     velocity.y = -_jumpForce;
     position.y += velocity.y * dt;
     isOnGround = false;
@@ -238,22 +258,48 @@ with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
     }
   }
   
-  void _respawn() {
-    const hitDuration = Duration(milliseconds: 350);
-    const appearingDuration = Duration(milliseconds: 350);
+  void _respawn() async {
+    if(game.playSounds) FlameAudio.play('hit.wav', volume: game.soundVolume);
     const canMoveDuration = Duration(milliseconds: 400);
     gotHit = true;
     current = PlayerState.hit;
-    Future.delayed(hitDuration, (){
-      scale.x = 1;
-      position = startingPosition - Vector2.all(32);
-      current = PlayerState.appearing;
-      Future.delayed(appearingDuration, () {
-        velocity = Vector2.zero();
-        position = startingPosition;
-         _updatePlayerState();
-         Future.delayed(canMoveDuration, () => gotHit = false);
-      });
-    });
+
+    await animationTicker?.completed;
+    animationTicker?.reset();
+
+    scale.x = 1;
+    position = startingPosition - Vector2.all(32);
+    current = PlayerState.appearing;
+
+    await animationTicker?.completed;
+    animationTicker?.reset();
+    velocity = Vector2.zero();
+    position = startingPosition;
+    _updatePlayerState();
+    Future.delayed(canMoveDuration, () => gotHit = false);
+    
+  }
+  
+  void _reachedCheckpoint() async {
+    reachedCheckpoint = true;
+    if(game.playSounds) {
+      FlameAudio.play('disappear.wav', volume: game.soundVolume);
+    }
+    if(scale.x > 0) {
+      position = position - Vector2.all(32);
+    } else if(scale.x < 0) {
+      position = position + Vector2(32, -32);
+    }
+
+    current = PlayerState.disappearing;
+    await animationTicker?.completed;
+    animationTicker?.reset();
+
+    reachedCheckpoint = false;
+      position = Vector2.all(-640);
+
+      const waitToChangeDuration = Duration(seconds: 3);
+      Future.delayed(waitToChangeDuration, () => game.loadNextLevel() );
+
   }
 }
