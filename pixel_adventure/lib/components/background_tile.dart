@@ -6,7 +6,7 @@ import 'package:flutter/painting.dart';
 
 class BackgroundTile extends ParallaxComponent {
   final String color;
-  BackgroundTile({this.color = 'Gray',
+  BackgroundTile({this.color = 'Blue',
    position
    }) : super(
     position: position
